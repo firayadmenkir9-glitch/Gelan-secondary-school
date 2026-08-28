@@ -1,0 +1,14 @@
+                 GELAN SECONDARY SCHOOL
+                         │
+          ┌──────────────┴──────────────┐
+          │                             │
+     GITHUB PAGES                    RENDER
+     FRONTEND                        BACKEND
+          │                             │
+     HTML/CSS/JS                  Node + Express
+          │                             │
+          │                        PostgreSQL
+          │                             │
+          └────────── API ──────────────┘
+                         │
+                    STUDENT RESULTS
