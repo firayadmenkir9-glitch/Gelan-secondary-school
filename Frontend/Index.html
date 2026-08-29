@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gelan Secondary School</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f1f5f9;
+  color: #172033;
+}
+
+header {
+  background: #2563eb;
+  color: white;
+  padding: 18px;
+  text-align: center;
+}
+
+.container {
+  max-width: 900px;
+  margin: 25px auto;
+  padding: 15px;
+}
+
+.card {
+  background: white;
+  padding: 25px;
+  border-radius: 15px;
+  margin-bottom: 20px;
+  box-shadow: 0 5px 20px rgba(0,0,0,.08);
+}
+
+input, select, button {
+  width: 100%;
+  padding: 13px;
+  margin: 8px 0;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+}
+
+button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+button:hover {
+  background: #1d4ed8;
+}
+
+.hidden {
+  display: none;
+}
+
+.subject {
+  padding: 18px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  margin: 10px 0;
+  cursor: pointer;
+}
+
+.subject:hover {
+  background: #eff6ff;
+}
+
+.question {
+  margin: 20px 0;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+}
+
+.option {
+  display: block;
+  padding: 10px;
+  margin: 7px 0;
+  background: #f8fafc;
+  border-radius: 7px;
+}
+
+.result {
+  text-align: center;
+  font-size: 22px;
+  padding: 25px;
+  background: #ecfdf5;
+  border-radius: 12px;
+}
+
+.error {
+  color: #dc2626;
+}
+
+.success {
+  color: #16a34a;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>Gelan Secondary School</h1>
+  <p>Online Examination System</p>
+</header>
+
+<div class="container">
+
+  <!-- LOGIN -->
+  <section id="loginPage" class="card">
+    <h2>Student Login</h2>
+
+    <input
+      type="text"
+      id="studentId"
+      placeholder="Student ID"
+    >
+
+    <input
+      type="password"
+      id="password"
+      placeholder="Password"
+    >
+
+    <button onclick="login()">Login</button>
+
+    <p id="loginMessage"></p>
+  </section>
+
+
+  <!-- DASHBOARD -->
+  <section id="dashboard" class="hidden">
+
+    <div class="card">
+      <h2>Welcome, <span id="studentName"></span></h2>
+
+      <button onclick="logout()">Logout</button>
+    </div>
+
+    <div class="card">
+      <h2>Subjects</h2>
+
+      <div id="subjects">
+        Loading subjects...
+      </div>
+    </div>
+
+  </section>
+
+
+  <!-- EXAM -->
+  <section id="examPage" class="hidden">
+
+    <div class="card">
+      <h2 id="examTitle"></h2>
+
+      <form id="examForm"></form>
+
+      <button onclick="submitExam()">
+        Submit Exam
+      </button>
+    </div>
+
+  </section>
+
+
+  <!-- RESULT -->
+  <section id="resultPage" class="hidden">
+
+    <div class="card">
+
+      <h2>Exam Result</h2>
+
+      <div class="result">
+        <p>
+          Score:
+          <strong id="score"></strong>
+        </p>
+
+        <p>
+          Percentage:
+          <strong id="percentage"></strong>%
+        </p>
+
+        <p id="grade"></p>
+      </div>
+
+      <button onclick="showDashboard()">
+        Back to Dashboard
+      </button>
+
+    </div>
+
+  </section>
+
+</div>
+
+
+<script>
+
+const API_URL = "https://YOUR-BACKEND.onrender.com/api";
+
+let token = "";
+let currentExam = null;
+
+
+// LOGIN
+async function login() {
+
+  const studentId =
+    document.getElementById("studentId").value.trim();
+
+  const password =
+    document.getElementById("password").value;
+
+  const message =
+    document.getElementById("loginMessage");
+
+  if (!studentId || !password) {
+    message.innerHTML =
+      "<span class='error'>Enter Student ID and password.</span>";
+    return;
+  }
+
+  try {
+
+    const response = await fetch(`${API_URL}/login`, {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+        studentId,
+        password
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      message.innerHTML =
+        `<span class="error">${data.message}</span>`;
+      return;
+    }
+
+    token = data.token;
+
+    document.getElementById("studentName").textContent =
+      data.student.name;
+
+    document.getElementById("loginPage")
+      .classList.add("hidden");
+
+    document.getElementById("dashboard")
+      .classList.remove("hidden");
+
+    loadSubjects();
+
+  } catch (error) {
+
+    message.innerHTML =
+      "<span class='error'>Cannot connect to server.</span>";
+
+  }
+}
+
+
+// LOAD SUBJECTS
+async function loadSubjects() {
+
+  const container =
+    document.getElementById("subjects");
+
+  try {
+
+    const response = await fetch(
+      `${API_URL}/subjects`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    const subjects = await response.json();
+
+    container.innerHTML = "";
+
+    subjects.forEach(subject => {
+
+      const div = document.createElement("div");
+
+      div.className = "subject";
+
+      div.innerHTML = `
+        <h3>${subject.name}</h3>
+        <p>Click to view exams</p>
+      `;
+
+      div.onclick = () =>
+        loadExams(subject.id, subject.name);
+
+      container.appendChild(div);
+
+    });
+
+  } catch (error) {
+
+    container.innerHTML =
+      "<p class='error'>Failed to load subjects.</p>";
+
+  }
+}
+
+
+// LOAD EXAMS
+async function loadExams(subjectId, subjectName) {
+
+  const container =
+    document.getElementById("subjects");
+
+  try {
+
+    const response = await fetch(
+      `${API_URL}/subjects/${subjectId}/exams`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    const exams = await response.json();
+
+    container.innerHTML = `
+      <h3>${subjectName} Exams</h3>
+    `;
+
+    exams.forEach(exam => {
+
+      const div =
+        document.createElement("div");
+
+      div.className = "subject";
+
+      div.innerHTML = `
+        <h3>${exam.title}</h3>
+        <p>${exam.exam_type}</p>
+        <button>Start Exam</button>
+      `;
+
+      div.querySelector("button").onclick = () =>
+        startExam(exam.id);
+
+      container.appendChild(div);
+
+    });
+
+  } catch (error) {
+
+    container.innerHTML =
+      "<p class='error'>Failed to load exams.</p>";
+
+  }
+}
+
+
+// START EXAM
+async function startExam(examId) {
+
+  try {
+
+    const response = await fetch(
+      `${API_URL}/exams/${examId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    const exam = await response.json();
+
+    currentExam = exam;
+
+    document.getElementById("dashboard")
+      .classList.add("hidden");
+
+    document.getElementById("examPage")
+      .classList.remove("hidden");
+
+    document.getElementById("examTitle")
+      .textContent = exam.title;
+
+    const form =
+      document.getElementById("examForm");
+
+    form.innerHTML = "";
+
+    exam.questions.forEach((q, index) => {
+
+      const div =
+        document.createElement("div");
+
+      div.className = "question";
+
+      div.innerHTML = `
+        <h3>${index + 1}. ${q.question}</h3>
+
+        <label class="option">
+          <input type="radio"
+                 name="q${q.id}"
+                 value="A">
+          ${q.option_a}
+        </label>
+
+        <label class="option">
+          <input type="radio"
+                 name="q${q.id}"
+                 value="B">
+          ${q.option_b}
+        </label>
+
+        <label class="option">
+          <input type="radio"
+                 name="q${q.id}"
+                 value="C">
+          ${q.option_c}
+        </label>
+
+        <label class="option">
+          <input type="radio"
+                 name="q${q.id}"
+                 value="D">
+          ${q.option_d}
+        </label>
+      `;
+
+      form.appendChild(div);
+
+    });
+
+  } catch (error) {
+
+    alert("Could not load exam.");
+
+  }
+}
+
+
+// SUBMIT EXAM
+async function submitExam() {
+
+  const answers = {};
+
+  currentExam.questions.forEach(q => {
+
+    const selected =
+      document.querySelector(
+        `input[name="q${q.id}"]:checked`
+      );
+
+    answers[q.id] =
+      selected ? selected.value : null;
+
+  });
+
+  try {
+
+    const response = await fetch(
+      `${API_URL}/exams/${currentExam.id}/submit`,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+
+        body: JSON.stringify({
+          answers
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      alert(result.message);
+      return;
+    }
+
+    document.getElementById("examPage")
+      .classList.add("hidden");
+
+    document.getElementById("resultPage")
+      .classList.remove("hidden");
+
+    document.getElementById("score")
+      .textContent =
+      `${result.score} / ${result.total}`;
+
+    document.getElementById("percentage")
+      .textContent =
+      result.percentage;
+
+    document.getElementById("grade")
+      .textContent =
+      `Grade: ${result.grade}`;
+
+  } catch (error) {
+
+    alert("Failed to submit exam.");
+
+  }
+}
+
+
+// DASHBOARD
+function showDashboard() {
+
+  document.getElementById("resultPage")
+    .classList.add("hidden");
+
+  document.getElementById("dashboard")
+    .classList.remove("hidden");
+
+  loadSubjects();
+}
+
+
+// LOGOUT
+function logout() {
+
+  token = "";
+
+  document.getElementById("dashboard")
+    .classList.add("hidden");
+
+  document.getElementById("resultPage")
+    .classList.add("hidden");
+
+  document.getElementById("examPage")
+    .classList.add("hidden");
+
+  document.getElementById("loginPage")
+    .classList.remove("hidden");
+
+}
+
+</script>
+
+</body>
+</html>
